@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <math.h>
 
 MainWindow::MainWindow()
 {
@@ -84,9 +85,22 @@ void MainWindow::open()
         graphicsView->show();
     }
     else if(oBmp.size == 8){
-        QVector<QRgb> colorTable(256);
-        for(int i=0;i<256;i++)
-            colorTable[i] = qRgb(i,i,i);
+        QVector<float> colorTable(256);
+        //for(int i=0;i<256;i++)
+        //    colorTable[i] = qRgb(i,i,i);
+        for(int i = 0; i < colorTable.size(); i++){
+             float Lin = (i+0.5) / (float) (colorTable.size()-1);
+             if (Lin <= 0.0f)
+                 colorTable[i] = 0.0f;
+             else if (Lin >= 1.0f)
+                 colorTable[i] = 1.0f;
+             else if (Lin < 0.0031308f)
+                 colorTable[i] = Lin * 12.92f;
+             else
+                 colorTable[i] = std::pow(Lin, 1.0f / 2.4f) * 1.055f - 0.055f;
+             std::cout << colorTable[i] << std::endl;
+        }
+
         QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGB888);
         /*for(int i = 0;i<255;i++){
             value = qRgb(i,0,0);
@@ -94,9 +108,12 @@ void MainWindow::open()
         }*/
         int countRows=oBmp.height-1;
         int countColumns=0;
+        std::cout << "ddd" << std::endl;
         for(int i = 0;i<oBmp.width*oBmp.height;i+=1){
             int k = oBmp.data[i];
-            pic.setPixel(countColumns,countRows,colorTable[k]);
+            //std::cout << k << std::endl;
+            value = qRgb(colorTable[k],colorTable[k],colorTable[k]);
+            pic.setPixel(countColumns,countRows,value);
             countColumns++;
             if(countColumns == oBmp.width){
                 //std::cout << r << "-" << g << "-" << b << std::endl;
@@ -136,6 +153,9 @@ void MainWindow::readBMP(char* filename){
     std::cout << "raw " << raw << std::endl;
     std::cout << "size " << size1 << std::endl;
     std::cout << "start " << start << std::endl;
+
+    std::vector<unsigned char> info2 (start-54);
+    fread(&info2[0], sizeof(unsigned char), start-54, f); // read the 54-byte header
 
     if(sizeFile == 24){
         int size = 3*width * height;
