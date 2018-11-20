@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string>
 #include <math.h>
-
+typedef std::bitset<8> byte;
 MainWindow::MainWindow()
 {
     QWidget *widget = new QWidget;
@@ -85,7 +85,35 @@ void MainWindow::open()
         graphicsView->show();
     }
     else if(oBmp.size == 8){
-        QVector<float> colorTable(256);
+
+        int* palette = new int [oBmp.numberColors];
+        //byte* bpalette = new byte[numberColor*4];
+        //f.read (bpalette, 0, numberColor*4);
+        int nindex8 = 0;
+        for (int n = 0; n < oBmp.numberColors; n++)
+        {
+            palette[n] = (255&0xff)<<24
+                        | (((int)oBmp.bufferColors[nindex8+2]&0xff)<<16)
+                        | (((int)oBmp.bufferColors[nindex8+1]&0xff)<<8)
+                        | (int)oBmp.bufferColors[nindex8]&0xff;
+            nindex8+=4;
+        }
+
+        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGB888);
+        nindex8 = 0;
+        int npad8 = (oBmp.sizeRaw / oBmp.height) - oBmp.width;
+        for (int j8 = oBmp.height-1; j8 >= 0 ; j8--)
+        {
+            for (int i8 = 0; i8 < oBmp.width; i8++)
+            {
+            pic.setPixel(i8,j8,palette [((int)oBmp.data[nindex8]&0xff)]);
+            nindex8++;
+            }
+            nindex8 += npad8;
+       }
+
+
+        /*QVector<float> colorTable(256);
         //for(int i=0;i<256;i++)
         //    colorTable[i] = qRgb(i,i,i);
         for(int i = 0; i < colorTable.size(); i++){
@@ -98,14 +126,14 @@ void MainWindow::open()
                  colorTable[i] = Lin * 12.92f;
              else
                  colorTable[i] = std::pow(Lin, 1.0f / 2.4f) * 1.055f - 0.055f;
-             std::cout << colorTable[i] << std::endl;
+             //std::cout << colorTable[i] << std::endl;
         }
 
         QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGB888);
         /*for(int i = 0;i<255;i++){
             value = qRgb(i,0,0);
             pic.setColor(i,value);
-        }*/
+        }
         int countRows=oBmp.height-1;
         int countColumns=0;
         std::cout << "ddd" << std::endl;
@@ -120,7 +148,7 @@ void MainWindow::open()
                 countRows--;
                 countColumns=0;
             }
-        }
+        }*/
         QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
         scene->clear();
         scene->addItem(item2);
@@ -144,18 +172,34 @@ void MainWindow::readBMP(char* filename){
     int height = int(info[25] << 24 | info[24] << 16 | info[23] << 8 | info[22]);
     int sizeFile = int(info[29] << 8 | info[28]);
     int size1 = int(info[6] << 24 | info[5] << 16 | info[4] << 8 | info[3]);
-    int raw = int(info[34] << 24 | info[33] << 16 | info[32] << 8 | info[31]);
+    //int raw = int(info[34] << 24 | info[33] << 16 | info[32] << 8 | info[31]);
     int start = int(info[13] << 24 | info[12] << 16 | info[11] << 8 | info[10]);
+    int nsize = int(info[37] << 24 | info[36] << 16 | info[35] << 8 | info[34]);
+    int pal = int(info[49] << 24 | info[48] << 16 | info[47] << 8 | info[46]);
+    int ppMeterX = int(info[41] << 24 | info[40] << 16 | info[39] << 8 | info[38]);
+    int ppMeterY = int(info[45] << 24 | info[44] << 16 | info[43] << 8 | info[42]);
 
     std::cout << "sizefile " << sizeFile << std::endl;
     std::cout << "width  " << width << std::endl;
     std::cout << "height " << height<< std::endl;
-    std::cout << "raw " << raw << std::endl;
+    std::cout << "raw " << nsize << std::endl;
     std::cout << "size " << size1 << std::endl;
     std::cout << "start " << start << std::endl;
+    std::cout << "pal " << pal << std::endl;
+    std::cout << "ppX " << ppMeterX << std::endl;
+    std::cout << "ppY " << ppMeterY << std::endl;
 
-    std::vector<unsigned char> info2 (start-54);
-    fread(&info2[0], sizeof(unsigned char), start-54, f); // read the 54-byte header
+    //std::vector<unsigned char> info2 (start-54);
+    //fread(&info2[0], sizeof(unsigned char), start-54, f); // read the 54-byte header
+
+    int numberColor = 0;
+    if(pal > 0){
+        numberColor = pal;
+    }
+    else{
+        numberColor = (1&0xff) << 8;
+    }
+
 
     if(sizeFile == 24){
         int size = 3*width * height;
@@ -173,14 +217,16 @@ void MainWindow::readBMP(char* filename){
             i+=3;
         }
         //stored in object bmp
-        oBmp.setParameters(dataRgb,"24",width,height,sizeFile);
+        oBmp.setParameters(dataRgb,"24",width,height,sizeFile,numberColor*4);
     }
     else if(sizeFile == 8){
         int size = width * height;
         std::vector<unsigned char> fullData (size);
         std::vector<unsigned char> dataRgb (width * height);
-
-        fread(&fullData[0], sizeof(unsigned char), size, f); // read the rest of the data at once
+        std::vector<unsigned char> bufferColors(numberColor*4);
+        fread(&bufferColors[0],sizeof(unsigned char),numberColor*4,f);
+        int npad8 = (nsize / height) - width;
+        fread(&fullData[0], sizeof(unsigned char), (width+npad8)*height, f); // read the rest of the data at once
         fclose(f);
         i = 0;
         dataRgb= fullData;
@@ -191,7 +237,7 @@ void MainWindow::readBMP(char* filename){
             i+=3;
         }*/
         //stored in object bmp
-        oBmp.setParameters(dataRgb,"8",width,height,sizeFile);
+        oBmp.setParameters(dataRgb,"8",width,height,sizeFile,numberColor,bufferColors,nsize);
     }
 
 }
