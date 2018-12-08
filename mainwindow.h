@@ -11,28 +11,33 @@ class QLabel;
 class QMenu;
 class QGraphicsView;
 class QGraphicsScene;
-
+class QSlider;
+class QGroupBox;
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
     MainWindow();
+    std::vector<unsigned int> currentPixels;
     void readBMP(char* filename);
     bmp oBmp;
     unsigned char* data;
     QGraphicsView * graphicsView;
     QGraphicsScene *scene;
-
+    QSlider *slider;
+    QGroupBox *groupBox;
+    int beta;
 private slots:
+    void changeSlider();
     void newFile();
     void open();
     void save();
     void print();
-    void undo();
-    void redo();
-    void cut();
-    void copy();
+    void darken();
+    void brightness();
+    void upContrast();
+    void downContrast();
     void paste();
     void bold();
     void italic();
@@ -45,14 +50,12 @@ private slots:
     void about();
     void aboutQt();
 
-
-
 private:
     void createActions();
     void createMenus();
 
     QMenu *fileMenu;
-    QMenu *editMenu;
+    QMenu *filtersMenu;
     QMenu *formatMenu;
     QMenu *helpMenu;
     QActionGroup *alignmentGroup;
@@ -61,11 +64,11 @@ private:
     QAction *saveAct;
     QAction *printAct;
     QAction *exitAct;
-    QAction *undoAct;
-    QAction *redoAct;
-    QAction *cutAct;
-    QAction *copyAct;
-    QAction *pasteAct;
+    QAction *darkenAct;
+    QAction *brightnessAct;
+    QAction *upContrastAct;
+    QAction *downContrastAct;
+
     QAction *boldAct;
     QAction *italicAct;
     QAction *leftAlignAct;

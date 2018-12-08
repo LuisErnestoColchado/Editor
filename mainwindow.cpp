@@ -8,6 +8,8 @@
 typedef std::bitset<8> byte;
 MainWindow::MainWindow()
 {
+    QLCDNumber *lcd = new QLCDNumber(3);
+    lcd->setSegmentStyle(QLCDNumber::Flat);
     QWidget *widget = new QWidget;
     setCentralWidget(widget);
 
@@ -15,19 +17,30 @@ MainWindow::MainWindow()
     graphicsView = new QGraphicsView(this);
     scene->setSceneRect(QRectF(2,2,800,800));
 
+    slider = new QSlider(Qt::Horizontal);
+    slider->setRange(-255, 255);
+    slider->setValue(0);
+    groupBox = new QGroupBox(tr("Adjust Brightness"));
+
     QString fileName = "/Users/luisernestocolchado/bmp_file_99151/Bmp_file_Icon_256.png";
     QImage image(fileName);
     QGraphicsPixmapItem* item = new QGraphicsPixmapItem(QPixmap::fromImage(image));
     scene->addItem(item);
     graphicsView->setScene(scene);
     graphicsView->setAlignment(Qt::AlignCenter);
-
+    QVBoxLayout *vbox = new QVBoxLayout;
+    vbox->addWidget(slider);
+    groupBox->setLayout(vbox);
+    groupBox->setHidden(true);
     QVBoxLayout *layout = new QVBoxLayout;
+    //QPushButton *button = new QPushButton("&Download", this);
+    connect(slider, SIGNAL(valueChanged(int)),lcd, SLOT(display(int)));
+    connect(slider,SIGNAL(sliderReleased()), SLOT(changeSlider()));
+
     layout->setMargin(5);
-
     layout->addWidget(graphicsView);
+    layout->addWidget(groupBox);
     widget->setLayout(layout);
-
     createActions();
     createMenus();
 
@@ -35,6 +48,11 @@ MainWindow::MainWindow()
     showMaximized();
 }
 
+void MainWindow::changeSlider(){
+
+    beta = slider->value();
+    brightness();
+}
 
 void MainWindow::newFile()
 {
@@ -69,6 +87,9 @@ void MainWindow::open()
             g = oBmp.data[i+1];
             b = oBmp.data[i+2];
             //std::cout << data[i] << std::endl;
+            currentPixels.push_back(r);
+            currentPixels.push_back(g);
+            currentPixels.push_back(b);
             value = qRgb(r,g,b);
             pic.setPixel(countColumns,countRows,value);
             countColumns++;
@@ -220,6 +241,11 @@ void MainWindow::readBMP(char* filename){
         oBmp.setParameters(dataRgb,"24",width,height,sizeFile,numberColor*4);
     }
     else if(sizeFile == 8){
+        if (nsize == 0)
+                   {
+                   nsize = ((((width*8)+31) & ~31 ) >> 3);
+                   nsize *= height;
+                   }
         int size = width * height;
         std::vector<unsigned char> fullData (size);
         std::vector<unsigned char> dataRgb (width * height);
@@ -251,22 +277,52 @@ void MainWindow::print()
     infoLabel->setText(tr("Invoked <b>File|Print</b>"));
 }
 
-void MainWindow::undo()
+void MainWindow::darken()
 {
-    infoLabel->setText(tr("Invoked <b>Edit|Undo</b>"));
+    groupBox->setHidden(false);
 }
 
-void MainWindow::redo()
+void MainWindow::brightness()
 {
-    infoLabel->setText(tr("Invoked <b>Edit|Redo</b>"));
+    std::vector<unsigned> changedPixels;
+    //unsigned int beta = 100;
+    for(int i=0;i<currentPixels.size();i++)
+    {
+        if (currentPixels[i] + beta <= 255 && currentPixels[i] + beta >=0)
+            changedPixels.push_back(currentPixels[i] + beta);
+        else
+            if (beta >= 0)
+                changedPixels.push_back(255);
+            else
+                changedPixels.push_back(0);
+    }
+
+    int countRows=oBmp.height-1;
+    int countColumns=0;
+    QRgb valueRGB;
+    QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+    for(int i = 0;i<oBmp.width*oBmp.height*3;i+=3){
+        valueRGB = qRgb(changedPixels[i],changedPixels[i+1],changedPixels[i+2]);
+        pic.setPixel(countColumns,countRows,valueRGB);
+        countColumns++;
+        if(countColumns == oBmp.width){
+            countRows--;
+            countColumns=0;
+        }
+    }
+    QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+    scene->clear();
+    scene->addItem(item2);
+    graphicsView->setScene(scene);
+    graphicsView->show();
 }
 
-void MainWindow::cut()
+void MainWindow::upContrast()
 {
     infoLabel->setText(tr("Invoked <b>Edit|Cut</b>"));
 }
 
-void MainWindow::copy()
+void MainWindow::downContrast()
 {
     infoLabel->setText(tr("Invoked <b>Edit|Copy</b>"));
 }
@@ -356,33 +412,23 @@ void MainWindow::createActions()
     exitAct->setStatusTip(tr("Exit the application"));
     connect(exitAct, &QAction::triggered, this, &QWidget::close);
 
-    undoAct = new QAction(tr("&Undo"), this);
-    undoAct->setShortcuts(QKeySequence::Undo);
-    undoAct->setStatusTip(tr("Undo the last operation"));
-    connect(undoAct, &QAction::triggered, this, &MainWindow::undo);
+    darkenAct = new QAction(tr("&Darken the image"), this);
+    darkenAct->setStatusTip(tr("Undo the last operation"));
+    connect(darkenAct, &QAction::triggered, this, &MainWindow::darken);
 
-    redoAct = new QAction(tr("&Redo"), this);
-    redoAct->setShortcuts(QKeySequence::Redo);
-    redoAct->setStatusTip(tr("Redo the last operation"));
-    connect(redoAct, &QAction::triggered, this, &MainWindow::redo);
+    brightnessAct = new QAction(tr("&Add bright to image"), this);
+    brightnessAct->setStatusTip(tr("Redo the last operation"));
+    connect(brightnessAct, &QAction::triggered, this, &MainWindow::brightness);
 
-    cutAct = new QAction(tr("Cu&t"), this);
-    cutAct->setShortcuts(QKeySequence::Cut);
-    cutAct->setStatusTip(tr("Cut the current selection's contents to the "
+    upContrastAct = new QAction(tr("&Add contrast to image"), this);
+    upContrastAct->setStatusTip(tr("Cut the current selection's contents to the "
                             "clipboard"));
-    connect(cutAct, &QAction::triggered, this, &MainWindow::cut);
+    connect(upContrastAct, &QAction::triggered, this, &MainWindow::upContrast);
 
-    copyAct = new QAction(tr("&Copy"), this);
-    copyAct->setShortcuts(QKeySequence::Copy);
-    copyAct->setStatusTip(tr("Copy the current selection's contents to the "
+    downContrastAct = new QAction(tr("&Down contrast to image"), this);
+    downContrastAct->setStatusTip(tr("Copy the current selection's contents to the "
                              "clipboard"));
-    connect(copyAct, &QAction::triggered, this, &MainWindow::copy);
-
-    pasteAct = new QAction(tr("&Paste"), this);
-    pasteAct->setShortcuts(QKeySequence::Paste);
-    pasteAct->setStatusTip(tr("Paste the clipboard's contents into the current "
-                              "selection"));
-    connect(pasteAct, &QAction::triggered, this, &MainWindow::paste);
+    connect(downContrastAct, &QAction::triggered, this, &MainWindow::downContrast);
 
     boldAct = new QAction(tr("&Bold"), this);
     boldAct->setCheckable(true);
@@ -465,20 +511,19 @@ void MainWindow::createMenus()
     fileMenu->addSeparator();
     fileMenu->addAction(exitAct);
 
-    editMenu = menuBar()->addMenu(tr("&Edit"));
-    editMenu->addAction(undoAct);
-    editMenu->addAction(redoAct);
-    editMenu->addSeparator();
-    editMenu->addAction(cutAct);
-    editMenu->addAction(copyAct);
-    editMenu->addAction(pasteAct);
-    editMenu->addSeparator();
+    filtersMenu = menuBar()->addMenu(tr("&Filters"));
+    filtersMenu->addAction(darkenAct);
+    filtersMenu->addAction(brightnessAct);
+    filtersMenu->addSeparator();
+    filtersMenu->addAction(upContrastAct);
+    filtersMenu->addAction(downContrastAct);
+    filtersMenu->addSeparator();
 
     helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(aboutAct);
     helpMenu->addAction(aboutQtAct);
 
-    formatMenu = editMenu->addMenu(tr("&Format"));
+    formatMenu = filtersMenu->addMenu(tr("&Format"));
     formatMenu->addAction(boldAct);
     formatMenu->addAction(italicAct);
     formatMenu->addSeparator()->setText(tr("Alignment"));
