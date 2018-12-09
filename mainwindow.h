@@ -20,24 +20,30 @@ class MainWindow : public QMainWindow
 public:
     MainWindow();
     std::vector<unsigned int> currentPixels;
-    void readBMP(char* filename);
+    void readBMP(char* filename,bmp&);
     bmp oBmp;
+    bmp oBmpCombine;
     unsigned char* data;
     QGraphicsView * graphicsView;
     QGraphicsScene *scene;
     QSlider *slider;
     QGroupBox *groupBox;
     int beta;
+    double alpha;
+    unsigned int numOpe;
+    unsigned int numCom;
 private slots:
     void changeSlider();
     void newFile();
     void open();
     void save();
     void print();
-    void darken();
     void brightness();
-    void upContrast();
-    void downContrast();
+    void changeBrightness();
+    void constrast();
+    void changeConstrast();
+    void combinationAdd();
+    void combinationOr();
     void paste();
     void bold();
     void italic();
@@ -55,7 +61,9 @@ private:
     void createMenus();
 
     QMenu *fileMenu;
+    QMenu *cbMenu;
     QMenu *filtersMenu;
+    QMenu *combinationMenu;
     QMenu *formatMenu;
     QMenu *helpMenu;
     QActionGroup *alignmentGroup;
@@ -64,11 +72,10 @@ private:
     QAction *saveAct;
     QAction *printAct;
     QAction *exitAct;
-    QAction *darkenAct;
     QAction *brightnessAct;
-    QAction *upContrastAct;
-    QAction *downContrastAct;
-
+    QAction *constrastAct;
+    QAction *combinationAndAct;
+    QAction *combinationOrAct;
     QAction *boldAct;
     QAction *italicAct;
     QAction *leftAlignAct;

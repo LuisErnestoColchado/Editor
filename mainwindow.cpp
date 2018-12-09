@@ -50,8 +50,23 @@ MainWindow::MainWindow()
 
 void MainWindow::changeSlider(){
 
-    beta = slider->value();
-    brightness();
+
+    if(numOpe == 1){
+        beta = slider->value();
+        changeBrightness();
+    }
+    else{
+        if(slider->value() >= 0 ){
+            alpha = slider->value();
+            changeConstrast();
+        }
+        else{
+            alpha = -1.0/(double)slider->value();
+            std::cout << "ddddd" << std::endl;
+            changeConstrast();
+        }
+
+   }
 }
 
 void MainWindow::newFile()
@@ -73,7 +88,7 @@ void MainWindow::open()
         tr("Open Image"), "/Users/luisernestocolchado", tr("Image Files (*.bmp)"));
     QByteArray ba = fileName.toLocal8Bit();
     char* cfilename = ba.data();
-    readBMP(cfilename);
+    readBMP(cfilename,oBmp);
     //data = ;
     QRgb value;
     int r,g,b;
@@ -106,11 +121,12 @@ void MainWindow::open()
         graphicsView->show();
     }
     else if(oBmp.size == 8){
-
         int* palette = new int [oBmp.numberColors];
         //byte* bpalette = new byte[numberColor*4];
         //f.read (bpalette, 0, numberColor*4);
+        int rgb8bpp;
         int nindex8 = 0;
+        QRgb rgb;
         for (int n = 0; n < oBmp.numberColors; n++)
         {
             palette[n] = (255&0xff)<<24
@@ -119,57 +135,49 @@ void MainWindow::open()
                         | (int)oBmp.bufferColors[nindex8]&0xff;
             nindex8+=4;
         }
-
-        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGB888);
+        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
         nindex8 = 0;
         int npad8 = (oBmp.sizeRaw / oBmp.height) - oBmp.width;
         for (int j8 = oBmp.height-1; j8 >= 0 ; j8--)
         {
             for (int i8 = 0; i8 < oBmp.width; i8++)
             {
-            pic.setPixel(i8,j8,palette [((int)oBmp.data[nindex8]&0xff)]);
-            nindex8++;
+
+                rgb8bpp = (int)oBmp.data[nindex8]&0xff;
+                //std::cout << rgb8bpp << std::endl;
+                int red = (palette[rgb8bpp] & 0x00ff0000) >> 16;
+                int green = (palette[rgb8bpp] & 0x0000ff00) >> 8;
+                int blue = (palette[rgb8bpp] & 0x000000ff);
+
+                /*char ar[9] = {0};
+                std::string v8_str = redb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ar);
+
+                char ag[9] = {0};
+                v8_str = greenb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ag);
+
+                char ab[9] = {0};
+                v8_str = blueb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ab);
+
+                int c1 = static_cast<int>(std::stoi(ar, nullptr, 2) + 64);
+                int c2 = static_cast<int>(std::stoi(ag, nullptr, 2) + 64);
+                int c3 = static_cast<int>(std::stoi(ab, nullptr, 2) + 64);
+                //int value = int(c1 );*/
+                currentPixels.push_back(red);
+                currentPixels.push_back(green);
+                currentPixels.push_back(blue);
+                //rgb = qRgb(c1,c2,c3);
+                //std::cout << (int)red << " . " << (int)green << " . " << (int)blue << std::endl;
+                rgb = qRgb(red,green,blue);
+                //unsigned int value = c1 << 5 || c2 << 2 || c3 << 0;
+                //std::cout << value << std::endl;
+                pic.setPixel(i8,j8,rgb);
+                nindex8++;
             }
             nindex8 += npad8;
-       }
-
-
-        /*QVector<float> colorTable(256);
-        //for(int i=0;i<256;i++)
-        //    colorTable[i] = qRgb(i,i,i);
-        for(int i = 0; i < colorTable.size(); i++){
-             float Lin = (i+0.5) / (float) (colorTable.size()-1);
-             if (Lin <= 0.0f)
-                 colorTable[i] = 0.0f;
-             else if (Lin >= 1.0f)
-                 colorTable[i] = 1.0f;
-             else if (Lin < 0.0031308f)
-                 colorTable[i] = Lin * 12.92f;
-             else
-                 colorTable[i] = std::pow(Lin, 1.0f / 2.4f) * 1.055f - 0.055f;
-             //std::cout << colorTable[i] << std::endl;
         }
-
-        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGB888);
-        /*for(int i = 0;i<255;i++){
-            value = qRgb(i,0,0);
-            pic.setColor(i,value);
-        }
-        int countRows=oBmp.height-1;
-        int countColumns=0;
-        std::cout << "ddd" << std::endl;
-        for(int i = 0;i<oBmp.width*oBmp.height;i+=1){
-            int k = oBmp.data[i];
-            //std::cout << k << std::endl;
-            value = qRgb(colorTable[k],colorTable[k],colorTable[k]);
-            pic.setPixel(countColumns,countRows,value);
-            countColumns++;
-            if(countColumns == oBmp.width){
-                //std::cout << r << "-" << g << "-" << b << std::endl;
-                countRows--;
-                countColumns=0;
-            }
-        }*/
         QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
         scene->clear();
         scene->addItem(item2);
@@ -179,7 +187,7 @@ void MainWindow::open()
 
 }
 
-void MainWindow::readBMP(char* filename){
+void MainWindow::readBMP(char* filename,bmp& oBmp){
     size_t i;
     FILE* f = fopen(filename, "rb");
 
@@ -277,13 +285,107 @@ void MainWindow::print()
     infoLabel->setText(tr("Invoked <b>File|Print</b>"));
 }
 
-void MainWindow::darken()
+void MainWindow::constrast()
 {
+    numOpe = 2;
+    groupBox->setTitle("Adjust Constrast");
+    slider->setRange(-10,10);
+    slider->setValue(0);
+    groupBox->setHidden(false);
+
+}
+
+void MainWindow::changeConstrast(){
+    //double factorAlpha = (259.0 * (alpha + 255.0)) / (255.0 * (259.0 - alpha));
+    std::vector<unsigned> changedPixels;
+    std::cout << alpha << std::endl;
+    //unsigned int beta = 100;
+    for(int i=0;i<currentPixels.size();i++)
+    {
+        if ((int)(currentPixels[i] * alpha) <= 255 && (int)(currentPixels[i] * alpha) >=0)
+            changedPixels.push_back((int)(currentPixels[i] * alpha));
+        else
+        {
+            if (alpha >= 0)
+                changedPixels.push_back(255);
+            else
+                changedPixels.push_back(0);
+        }
+    }
+    if(oBmp.size == 24){
+        int countRows=oBmp.height-1;
+        int countColumns=0;
+        QRgb valueRGB;
+        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+        for(int i = 0;i<oBmp.width*oBmp.height*3;i+=3){
+            valueRGB = qRgb(changedPixels[i],changedPixels[i+1],changedPixels[i+2]);
+            pic.setPixel(countColumns,countRows,valueRGB);
+            countColumns++;
+            if(countColumns == oBmp.width){
+                countRows--;
+                countColumns=0;
+            }
+        }
+        QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+        scene->clear();
+        scene->addItem(item2);
+        graphicsView->setScene(scene);
+        graphicsView->show();
+    }
+    else{
+            QRgb rgb;
+            int* palette = new int [oBmp.numberColors];
+                    //byte* bpalette = new byte[numberColor*4];
+                    //f.read (bpalette, 0, numberColor*4);
+                    int nindex8 = 0;
+                    for (int n = 0; n < oBmp.numberColors; n++)
+                    {
+                        palette[n] = (255&0xff)<<24
+                                    | (((int)oBmp.bufferColors[nindex8+2]&0xff)<<16)
+                                    | (((int)oBmp.bufferColors[nindex8+1]&0xff)<<8)
+                                    | (int)oBmp.bufferColors[nindex8]&0xff;
+                        nindex8+=4;
+                    }
+
+                    QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGB888);
+                    nindex8 = 0;
+                    int i = 0;
+                    int npad8 = (oBmp.sizeRaw / oBmp.height) - oBmp.width;
+                    for (int j8 = oBmp.height-1; j8 >= 0 ; j8--)
+                    {
+                        for (int i8 = 0; i8 < oBmp.width; i8++)
+                        {
+
+                            int valuecharR = changedPixels[i];
+                            int valuecharG = changedPixels[i+1];
+                            int valuecharB = changedPixels[i+2];
+                            rgb = qRgb(valuecharR,valuecharG,valuecharB);
+                            pic.setPixel(i8,j8,rgb);
+                            //std::cout << palette [changedPixels[i]] << std::endl;
+                            nindex8++;
+                            i+=3;
+                        }
+                        nindex8 += npad8;
+                    }
+
+                    QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+                    scene->clear();
+                    scene->addItem(item2);
+                    graphicsView->setScene(scene);
+                    graphicsView->show();
+        }
+
+}
+void MainWindow::brightness()
+{
+    numOpe = 1;
+    //if(oBmp.size == 8){
+    //    slider->setRange(0,oBmp.numberColors);
+    //}
     groupBox->setHidden(false);
 }
 
-void MainWindow::brightness()
-{
+void MainWindow::changeBrightness(){
     std::vector<unsigned> changedPixels;
     //unsigned int beta = 100;
     for(int i=0;i<currentPixels.size();i++)
@@ -296,35 +398,211 @@ void MainWindow::brightness()
             else
                 changedPixels.push_back(0);
     }
-
-    int countRows=oBmp.height-1;
-    int countColumns=0;
-    QRgb valueRGB;
-    QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
-    for(int i = 0;i<oBmp.width*oBmp.height*3;i+=3){
-        valueRGB = qRgb(changedPixels[i],changedPixels[i+1],changedPixels[i+2]);
-        pic.setPixel(countColumns,countRows,valueRGB);
-        countColumns++;
-        if(countColumns == oBmp.width){
-            countRows--;
-            countColumns=0;
+    if(oBmp.size == 24){
+        int countRows=oBmp.height-1;
+        int countColumns=0;
+        QRgb valueRGB;
+        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+        for(int i = 0;i<oBmp.width*oBmp.height*3;i+=3){
+            valueRGB = qRgb(changedPixels[i],changedPixels[i+1],changedPixels[i+2]);
+            pic.setPixel(countColumns,countRows,valueRGB);
+            countColumns++;
+            if(countColumns == oBmp.width){
+                countRows--;
+                countColumns=0;
+            }
         }
+        QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+        scene->clear();
+        scene->addItem(item2);
+        graphicsView->setScene(scene);
+        graphicsView->show();
     }
-    QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
-    scene->clear();
-    scene->addItem(item2);
-    graphicsView->setScene(scene);
-    graphicsView->show();
+    else{
+        QRgb rgb;
+        int* palette = new int [oBmp.numberColors];
+                //byte* bpalette = new byte[numberColor*4];
+                //f.read (bpalette, 0, numberColor*4);
+                int nindex8 = 0;
+                for (int n = 0; n < oBmp.numberColors; n++)
+                {
+                    palette[n] = (255&0xff)<<24
+                                | (((int)oBmp.bufferColors[nindex8+2]&0xff)<<16)
+                                | (((int)oBmp.bufferColors[nindex8+1]&0xff)<<8)
+                                | (int)oBmp.bufferColors[nindex8]&0xff;
+                    nindex8+=4;
+                }
+
+                QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGB888);
+                nindex8 = 0;
+                int i = 0;
+                int npad8 = (oBmp.sizeRaw / oBmp.height) - oBmp.width;
+                for (int j8 = oBmp.height-1; j8 >= 0 ; j8--)
+                {
+                    for (int i8 = 0; i8 < oBmp.width; i8++)
+                    {
+
+                        int valuecharR = changedPixels[i];
+                        int valuecharG = changedPixels[i+1];
+                        int valuecharB = changedPixels[i+2];
+                        rgb = qRgb(valuecharR,valuecharG,valuecharB);
+                        pic.setPixel(i8,j8,rgb);
+                        //std::cout << palette [changedPixels[i]] << std::endl;
+                        nindex8++;
+                        i+=3;
+                    }
+                    nindex8 += npad8;
+                }
+
+                QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+                scene->clear();
+                scene->addItem(item2);
+                graphicsView->setScene(scene);
+                graphicsView->show();
+    }
+
 }
 
-void MainWindow::upContrast()
-{
-    infoLabel->setText(tr("Invoked <b>Edit|Cut</b>"));
+void MainWindow::combinationAdd(){
+    auto fileName = QFileDialog::getOpenFileName(this,
+        tr("Choose image to Combine"), "/Users/luisernestocolchado", tr("Image Files (*.bmp)"));
+    QByteArray ba = fileName.toLocal8Bit();
+    char* cfilename = ba.data();
+    readBMP(cfilename,oBmpCombine);
+    //data = ;
+    QRgb value;
+    int r,g,b;
+
+
+    int maxWidth;
+    int maxHeight;
+    int minWidth;
+    int minHeight;
+
+    if(oBmpCombine.width > oBmp.width){
+        maxWidth = oBmpCombine.width;
+        //pixelsMax = oBmpCombine.data;
+        minWidth = oBmp.width;
+    }
+    else{
+        maxWidth = oBmp.width;
+        minWidth = oBmpCombine.width;
+    }
+    if(oBmpCombine.height > oBmp.height){
+        maxHeight = oBmpCombine.height;
+        minHeight = oBmp.height;
+    }
+    else{
+        maxHeight = oBmp.height;
+        minHeight = oBmpCombine.height;
+    }
+    int countRows=maxHeight-1;
+    int countColumns=0;
+    std::vector<unsigned char> pixelsMax(maxWidth*maxHeight*3);
+    if(oBmp.data.size() > oBmpCombine.data.size())
+        std::transform (oBmp.data.begin(), oBmp.data.end(), oBmpCombine.data.begin(), pixelsMax.begin(), std::plus<int>());
+    else
+        std::transform (oBmpCombine.data.begin(), oBmpCombine.data.end(), oBmp.data.begin(), pixelsMax.begin(), std::plus<int>());
+    if(oBmpCombine.size == 24){
+        QImage pic = QImage(maxWidth, maxHeight, QImage::Format_RGBA8888);
+        for(int i = 0;i<maxWidth*maxHeight*3;i+=3){
+
+            r = pixelsMax[i];
+            g = pixelsMax[i+1];
+            b = pixelsMax[i+2];
+            if(r > 255){
+                r = 255;
+            }
+            if(g > 255){
+                g = 255;
+            }
+            if(b > 255){
+                b = 255;
+            }
+            value = qRgb(r,g,b);
+            pic.setPixel(countColumns,countRows,value);
+            countColumns++;
+             std::cout << r << "-" << g << "-" << b << std::endl;
+            if(countColumns == maxWidth){
+
+                countRows--;
+                countColumns=0;
+            }
+        }
+        QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+        scene->clear();
+        scene->addItem(item2);
+        graphicsView->setScene(scene);
+        graphicsView->show();
+    }
+    else if(oBmp.size == 8){
+        int* palette = new int [oBmp.numberColors];
+        //byte* bpalette = new byte[numberColor*4];
+        //f.read (bpalette, 0, numberColor*4);
+        int rgb8bpp;
+        int nindex8 = 0;
+        QRgb rgb;
+        for (int n = 0; n < oBmp.numberColors; n++)
+        {
+            palette[n] = (255&0xff)<<24
+                        | (((int)oBmp.bufferColors[nindex8+2]&0xff)<<16)
+                        | (((int)oBmp.bufferColors[nindex8+1]&0xff)<<8)
+                        | (int)oBmp.bufferColors[nindex8]&0xff;
+            nindex8+=4;
+        }
+        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+        nindex8 = 0;
+        int npad8 = (oBmp.sizeRaw / oBmp.height) - oBmp.width;
+        for (int j8 = oBmp.height-1; j8 >= 0 ; j8--)
+        {
+            for (int i8 = 0; i8 < oBmp.width; i8++)
+            {
+
+                rgb8bpp = (int)oBmp.data[nindex8]&0xff;
+                //std::cout << rgb8bpp << std::endl;
+                int red = (palette[rgb8bpp] & 0x00ff0000) >> 16;
+                int green = (palette[rgb8bpp] & 0x0000ff00) >> 8;
+                int blue = (palette[rgb8bpp] & 0x000000ff);
+
+                /*char ar[9] = {0};
+                std::string v8_str = redb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ar);
+
+                char ag[9] = {0};
+                v8_str = greenb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ag);
+
+                char ab[9] = {0};
+                v8_str = blueb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ab);
+
+                int c1 = static_cast<int>(std::stoi(ar, nullptr, 2) + 64);
+                int c2 = static_cast<int>(std::stoi(ag, nullptr, 2) + 64);
+                int c3 = static_cast<int>(std::stoi(ab, nullptr, 2) + 64);
+                //int value = int(c1 );*/
+                currentPixels.push_back(red);
+                currentPixels.push_back(green);
+                currentPixels.push_back(blue);
+                //rgb = qRgb(c1,c2,c3);
+                //std::cout << (int)red << " . " << (int)green << " . " << (int)blue << std::endl;
+                rgb = qRgb(red,green,blue);
+                //unsigned int value = c1 << 5 || c2 << 2 || c3 << 0;
+                //std::cout << value << std::endl;
+                pic.setPixel(i8,j8,rgb);
+                nindex8++;
+            }
+            nindex8 += npad8;
+        }
+        QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+        scene->clear();
+        scene->addItem(item2);
+        graphicsView->setScene(scene);
+        graphicsView->show();
+    }
 }
 
-void MainWindow::downContrast()
-{
-    infoLabel->setText(tr("Invoked <b>Edit|Copy</b>"));
+void MainWindow::combinationOr(){
+
 }
 
 void MainWindow::paste()
@@ -412,23 +690,23 @@ void MainWindow::createActions()
     exitAct->setStatusTip(tr("Exit the application"));
     connect(exitAct, &QAction::triggered, this, &QWidget::close);
 
-    darkenAct = new QAction(tr("&Darken the image"), this);
-    darkenAct->setStatusTip(tr("Undo the last operation"));
-    connect(darkenAct, &QAction::triggered, this, &MainWindow::darken);
+    constrastAct = new QAction(tr("&Adjust Constrast"), this);
+    constrastAct->setStatusTip(tr("Undo the last operation"));
+    connect(constrastAct, &QAction::triggered, this, &MainWindow::constrast);
 
-    brightnessAct = new QAction(tr("&Add bright to image"), this);
+    brightnessAct = new QAction(tr("&Adjust Brightness"), this);
     brightnessAct->setStatusTip(tr("Redo the last operation"));
     connect(brightnessAct, &QAction::triggered, this, &MainWindow::brightness);
 
-    upContrastAct = new QAction(tr("&Add contrast to image"), this);
-    upContrastAct->setStatusTip(tr("Cut the current selection's contents to the "
+    combinationAndAct = new QAction(tr("&Add contrast to image"), this);
+    combinationAndAct->setStatusTip(tr("Cut the current selection's contents to the "
                             "clipboard"));
-    connect(upContrastAct, &QAction::triggered, this, &MainWindow::upContrast);
+    connect(combinationAndAct, &QAction::triggered, this, &MainWindow::combinationAdd);
 
-    downContrastAct = new QAction(tr("&Down contrast to image"), this);
-    downContrastAct->setStatusTip(tr("Copy the current selection's contents to the "
-                             "clipboard"));
-    connect(downContrastAct, &QAction::triggered, this, &MainWindow::downContrast);
+    combinationOrAct = new QAction(tr("&Add contrast to image"), this);
+    combinationOrAct->setStatusTip(tr("Cut the current selection's contents to the "
+                            "clipboard"));
+    connect(combinationOrAct, &QAction::triggered, this, &MainWindow::combinationOr);
 
     boldAct = new QAction(tr("&Bold"), this);
     boldAct->setCheckable(true);
@@ -511,12 +789,19 @@ void MainWindow::createMenus()
     fileMenu->addSeparator();
     fileMenu->addAction(exitAct);
 
+    cbMenu = menuBar()->addMenu(tr("&Change constrast and brightness"));
+    cbMenu->addAction(constrastAct);
+    cbMenu->addAction(brightnessAct);
+    cbMenu->addSeparator();
+
+    combinationMenu = menuBar()->addMenu(tr("&Combination"));
+    combinationMenu->addAction(combinationAndAct);
+    combinationMenu->addAction(combinationOrAct);
+    combinationMenu->addSeparator();
+
     filtersMenu = menuBar()->addMenu(tr("&Filters"));
-    filtersMenu->addAction(darkenAct);
+    filtersMenu->addAction(constrastAct);
     filtersMenu->addAction(brightnessAct);
-    filtersMenu->addSeparator();
-    filtersMenu->addAction(upContrastAct);
-    filtersMenu->addAction(downContrastAct);
     filtersMenu->addSeparator();
 
     helpMenu = menuBar()->addMenu(tr("&Help"));
