@@ -44,6 +44,7 @@ private slots:
     void changeConstrast();
     void combinationAdd();
     void combinationOr();
+    void hor7();
     void paste();
     void bold();
     void italic();
@@ -76,6 +77,8 @@ private:
     QAction *constrastAct;
     QAction *combinationAndAct;
     QAction *combinationOrAct;
+    QAction *hor7Act;
+
     QAction *boldAct;
     QAction *italicAct;
     QAction *leftAlignAct;

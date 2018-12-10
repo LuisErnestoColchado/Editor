@@ -50,7 +50,6 @@ MainWindow::MainWindow()
 
 void MainWindow::changeSlider(){
 
-
     if(numOpe == 1){
         beta = slider->value();
         changeBrightness();
@@ -106,9 +105,11 @@ void MainWindow::open()
             currentPixels.push_back(g);
             currentPixels.push_back(b);
             value = qRgb(r,g,b);
+            //std::cout << r << " " << g  << " " << b << " ";
             pic.setPixel(countColumns,countRows,value);
             countColumns++;
             if(countColumns == oBmp.width){
+               // std::cout << std::endl;
                 //std::cout << r << "-" << g << "-" << b << std::endl;
                 countRows--;
                 countColumns=0;
@@ -481,7 +482,6 @@ void MainWindow::combinationAdd(){
 
     if(oBmpCombine.width > oBmp.width){
         maxWidth = oBmpCombine.width;
-        //pixelsMax = oBmpCombine.data;
         minWidth = oBmp.width;
     }
     else{
@@ -498,15 +498,95 @@ void MainWindow::combinationAdd(){
     }
     int countRows=maxHeight-1;
     int countColumns=0;
-    std::vector<unsigned char> pixelsMax(maxWidth*maxHeight*3);
-    if(oBmp.data.size() > oBmpCombine.data.size())
-        std::transform (oBmp.data.begin(), oBmp.data.end(), oBmpCombine.data.begin(), pixelsMax.begin(), std::plus<int>());
-    else
-        std::transform (oBmpCombine.data.begin(), oBmpCombine.data.end(), oBmp.data.begin(), pixelsMax.begin(), std::plus<int>());
+    std::vector<unsigned int> pixelsMax(maxWidth*maxHeight*3);
+    std::vector<unsigned int> value1(currentPixels.size());
+    std::vector<unsigned int> value2(oBmpCombine.data.size());
+    int j=oBmp.width*3-1;
+    int p=oBmp.width*3;
+    for(int i =currentPixels.size()-1;i>=0;i--){
+        value1[j] = currentPixels[i];
+        j--;
+        if(j < (p-(oBmp.width*3))){
+            p+=oBmp.width*3;
+            j = p-1;
+
+        }
+    }
+    j=oBmpCombine.width*3-1;
+    p=oBmpCombine.width*3;
+    for(int i =oBmpCombine.data.size()-1;i>=0;i--){
+        value2[j] = (unsigned int)oBmpCombine.data[i];
+        j--;
+        if(j < (p-(oBmpCombine.width*3))){
+            p+=oBmpCombine.width*3;
+            j = p-1;
+        }
+    }
+
+    QRgb valuergb1;
+    std::vector<unsigned int> intRgb(maxWidth*3,0);
+    std::vector<std::vector<unsigned int>> image1(maxHeight);
+    std::vector<std::vector <unsigned int>> image2(maxHeight);
+    std::vector<std::vector <unsigned int>> image3(maxHeight);
+    int count=0;
+    for(int i =0;i<oBmp.height;i++){
+        for(int j=0;j<oBmp.width*3;j+=3){
+            intRgb[j] = value1[count];
+            intRgb[j+1] = value1[count+1];
+            intRgb[j+2] = value1[count+2];
+            count+=3;
+        }
+        image1[i] = intRgb;
+    }
+    if(oBmp.height < maxHeight){
+        for(int h = oBmp.height; h < maxHeight;h++){
+            std::cout << " h " << h << std::endl;
+            for(int j=0;j<oBmp.width*3;j+=3){
+                intRgb[j] = 0;
+                intRgb[j+1] = 0;
+                intRgb[j+2] = 0;
+            }
+            image1[h] = intRgb;
+        }
+
+    }
+
+    count=0;
+    for(int i =0;i<oBmpCombine.height;i++){
+
+        for(int j=0;j<oBmpCombine.width*3;j+=3){
+            intRgb[j] = value2[count];
+            intRgb[j+1] = value2[count+1];
+            intRgb[j+2] = value2[count+2];
+            count+=3;
+        }
+        image2[i] = intRgb;
+
+    }
+    if(oBmpCombine.height < maxHeight){
+        std::cout << "here" << std::endl;
+        for(int h = oBmpCombine.height; h < maxHeight;h++){
+            std::cout << " h " << h << std::endl;
+            for(int j=0;j<oBmpCombine.width*3;j+=3){
+                intRgb[j] = 0;
+                intRgb[j+1] = 0;
+                intRgb[j+2] = 0;
+            }
+            image2[h] = intRgb;
+        }
+    }
+
+    count =0;
+    for(int i = maxHeight - 1;i>=0;i--){
+        for(int k = 0;k < maxWidth*3;k++){
+            pixelsMax[count]  = image1[i][k] + image2[i][k];
+            count++;
+        }
+    }
+
     if(oBmpCombine.size == 24){
         QImage pic = QImage(maxWidth, maxHeight, QImage::Format_RGBA8888);
         for(int i = 0;i<maxWidth*maxHeight*3;i+=3){
-
             r = pixelsMax[i];
             g = pixelsMax[i+1];
             b = pixelsMax[i+2];
@@ -522,9 +602,7 @@ void MainWindow::combinationAdd(){
             value = qRgb(r,g,b);
             pic.setPixel(countColumns,countRows,value);
             countColumns++;
-             std::cout << r << "-" << g << "-" << b << std::endl;
             if(countColumns == maxWidth){
-
                 countRows--;
                 countColumns=0;
             }
@@ -602,8 +680,322 @@ void MainWindow::combinationAdd(){
 }
 
 void MainWindow::combinationOr(){
+    auto fileName = QFileDialog::getOpenFileName(this,
+        tr("Choose image to Combine"), "/Users/luisernestocolchado", tr("Image Files (*.bmp)"));
+    QByteArray ba = fileName.toLocal8Bit();
+    char* cfilename = ba.data();
+    readBMP(cfilename,oBmpCombine);
+    //data = ;
+    QRgb value;
+    int r,g,b;
 
+
+    int maxWidth;
+    int maxHeight;
+    int minWidth;
+    int minHeight;
+
+    if(oBmpCombine.width > oBmp.width){
+        maxWidth = oBmpCombine.width;
+        minWidth = oBmp.width;
+    }
+    else{
+        maxWidth = oBmp.width;
+        minWidth = oBmpCombine.width;
+    }
+    if(oBmpCombine.height > oBmp.height){
+        maxHeight = oBmpCombine.height;
+        minHeight = oBmp.height;
+    }
+    else{
+        maxHeight = oBmp.height;
+        minHeight = oBmpCombine.height;
+    }
+    int countRows=maxHeight-1;
+    int countColumns=0;
+    std::vector<unsigned int> pixelsMax(maxWidth*maxHeight*3);
+    std::vector<unsigned int> value1(currentPixels.size());
+    std::vector<unsigned int> value2(oBmpCombine.data.size());
+    int j=oBmp.width*3-1;
+    int p=oBmp.width*3;
+    for(int i =currentPixels.size()-1;i>=0;i--){
+        value1[j] = currentPixels[i];
+        j--;
+        if(j < (p-(oBmp.width*3))){
+            p+=oBmp.width*3;
+            j = p-1;
+
+        }
+    }
+    j=oBmpCombine.width*3-1;
+    p=oBmpCombine.width*3;
+    for(int i =oBmpCombine.data.size()-1;i>=0;i--){
+        value2[j] = (unsigned int)oBmpCombine.data[i];
+        j--;
+        if(j < (p-(oBmpCombine.width*3))){
+            p+=oBmpCombine.width*3;
+            j = p-1;
+        }
+    }
+
+    QRgb valuergb1;
+    std::vector<unsigned int> intRgb(maxWidth*3,1);
+    std::vector<std::vector<unsigned int>> image1(maxHeight);
+    std::vector<std::vector <unsigned int>> image2(maxHeight);
+    std::vector<std::vector <unsigned int>> image3(maxHeight);
+    int count=0;
+    for(int i =0;i<oBmp.height;i++){
+        for(int j=0;j<oBmp.width*3;j+=3){
+            intRgb[j] = value1[count];
+            intRgb[j+1] = value1[count+1];
+            intRgb[j+2] = value1[count+2];
+            count+=3;
+        }
+        image1[i] = intRgb;
+    }
+    if(oBmp.height < maxHeight){
+        for(int h = oBmp.height; h < maxHeight;h++){
+            std::cout << " h " << h << std::endl;
+            for(int j=0;j<oBmp.width*3;j+=3){
+                intRgb[j] = 1;
+                intRgb[j+1] = 1;
+                intRgb[j+2] = 1;
+            }
+            image1[h] = intRgb;
+        }
+
+    }
+
+    count=0;
+    for(int i =0;i<oBmpCombine.height;i++){
+
+        for(int j=0;j<oBmpCombine.width*3;j+=3){
+            intRgb[j] = value2[count];
+            intRgb[j+1] = value2[count+1];
+            intRgb[j+2] = value2[count+2];
+            count+=3;
+        }
+        image2[i] = intRgb;
+
+    }
+    if(oBmpCombine.height < maxHeight){
+        std::cout << "here" << std::endl;
+        for(int h = oBmpCombine.height; h < maxHeight;h++){
+            std::cout << " h " << h << std::endl;
+            for(int j=0;j<oBmpCombine.width*3;j+=3){
+                intRgb[j] = 1;
+                intRgb[j+1] = 1;
+                intRgb[j+2] = 1;
+            }
+            image2[h] = intRgb;
+        }
+    }
+
+    count =0;
+    for(int i = maxHeight - 1;i>=0;i--){
+        for(int k = 0;k < maxWidth*3;k++){
+            pixelsMax[count]  = image1[i][k] * image2[i][k];
+            count++;
+        }
+    }
+
+    if(oBmpCombine.size == 24){
+        QImage pic = QImage(maxWidth, maxHeight, QImage::Format_RGBA8888);
+        for(int i = 0;i<maxWidth*maxHeight*3;i+=3){
+            r = pixelsMax[i];
+            g = pixelsMax[i+1];
+            b = pixelsMax[i+2];
+            if(r > 255){
+                r = 255;
+            }
+            if(g > 255){
+                g = 255;
+            }
+            if(b > 255){
+                b = 255;
+            }
+            value = qRgb(r,g,b);
+            pic.setPixel(countColumns,countRows,value);
+            countColumns++;
+            if(countColumns == maxWidth){
+                countRows--;
+                countColumns=0;
+            }
+        }
+        QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+        scene->clear();
+        scene->addItem(item2);
+        graphicsView->setScene(scene);
+        graphicsView->show();
+    }
+    else if(oBmp.size == 8){
+        int* palette = new int [oBmp.numberColors];
+        //byte* bpalette = new byte[numberColor*4];
+        //f.read (bpalette, 0, numberColor*4);
+        int rgb8bpp;
+        int nindex8 = 0;
+        QRgb rgb;
+        for (int n = 0; n < oBmp.numberColors; n++)
+        {
+            palette[n] = (255&0xff)<<24
+                        | (((int)oBmp.bufferColors[nindex8+2]&0xff)<<16)
+                        | (((int)oBmp.bufferColors[nindex8+1]&0xff)<<8)
+                        | (int)oBmp.bufferColors[nindex8]&0xff;
+            nindex8+=4;
+        }
+        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+        nindex8 = 0;
+        int npad8 = (oBmp.sizeRaw / oBmp.height) - oBmp.width;
+        for (int j8 = oBmp.height-1; j8 >= 0 ; j8--)
+        {
+            for (int i8 = 0; i8 < oBmp.width; i8++)
+            {
+
+                rgb8bpp = (int)oBmp.data[nindex8]&0xff;
+                //std::cout << rgb8bpp << std::endl;
+                int red = (palette[rgb8bpp] & 0x00ff0000) >> 16;
+                int green = (palette[rgb8bpp] & 0x0000ff00) >> 8;
+                int blue = (palette[rgb8bpp] & 0x000000ff);
+
+                /*char ar[9] = {0};
+                std::string v8_str = redb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ar);
+
+                char ag[9] = {0};
+                v8_str = greenb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ag);
+
+                char ab[9] = {0};
+                v8_str = blueb.to_string();
+                std::copy(v8_str.begin(), v8_str.end(), ab);
+
+                int c1 = static_cast<int>(std::stoi(ar, nullptr, 2) + 64);
+                int c2 = static_cast<int>(std::stoi(ag, nullptr, 2) + 64);
+                int c3 = static_cast<int>(std::stoi(ab, nullptr, 2) + 64);
+                //int value = int(c1 );*/
+                currentPixels.push_back(red);
+                currentPixels.push_back(green);
+                currentPixels.push_back(blue);
+                //rgb = qRgb(c1,c2,c3);
+                //std::cout << (int)red << " . " << (int)green << " . " << (int)blue << std::endl;
+                rgb = qRgb(red,green,blue);
+                //unsigned int value = c1 << 5 || c2 << 2 || c3 << 0;
+                //std::cout << value << std::endl;
+                pic.setPixel(i8,j8,rgb);
+                nindex8++;
+            }
+            nindex8 += npad8;
+        }
+        QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+        scene->clear();
+        scene->addItem(item2);
+        graphicsView->setScene(scene);
+        graphicsView->show();
+    }
 }
+
+void MainWindow::hor7(){
+    std::vector<unsigned int> intRgb((oBmp.width*3)+18,0);
+    std::vector<std::vector<unsigned int>> image1(oBmp.height);
+    std::vector<unsigned int> value1(currentPixels.size());
+    std::vector<int> kernel = {1,1,1,1,1,1,1};
+    int j=oBmp.width*3-1;
+    int p=oBmp.width*3;
+    std::vector<std::vector<unsigned int>> imageResult(oBmp.height);
+    std::vector<unsigned int> intRgbR((oBmp.width*3),0);
+    for(int i =currentPixels.size()-1;i>=0;i--){
+        value1[j] = currentPixels[i];
+        j--;
+        if(j < (p-(oBmp.width*3))){
+            p+=oBmp.width*3;
+            j = p-1;
+
+        }
+    }
+    int count=0;
+    for(int i =0;i<oBmp.height;i++){
+        for(int j=9;j<oBmp.width*3+9;j+=3){
+            intRgb[j] = value1[count];
+            intRgb[j+1] = value1[count+1];
+            intRgb[j+2] = value1[count+2];
+            count+=3;
+        }
+        image1[i] = intRgb;
+        for(auto i : intRgb){
+            std::cout << i << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << " ******* " << std::endl;
+    for(int i =0;i<image1.size();i++){
+
+        for(int j=9;j<image1[i].size()-18;j+=3){
+            int sumR = 0;
+            int sumG = 0;
+            int sumB = 0;
+
+            for(int k =0;k<7;k++){
+                sumR += image1[i][(j-9)+(k*3)] * kernel[k];
+                sumG += image1[i][((j-9)+1)+(k*3)] * kernel[k];
+                sumB += image1[i][((j-9)+2)+(k*3)] * kernel[k];
+            }
+            sumR/=7;
+            sumG/=7;
+            sumB/=7;
+            intRgbR[j-9] = sumR;
+            intRgbR[(j-9)+1] = sumG;
+            intRgbR[(j-9)+2] = sumB;
+        }
+        imageResult[i] = intRgbR;
+        for(auto i : intRgbR){
+            std::cout << i << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    count =0;
+    std::vector<unsigned int> pixelsMax(oBmp.height*oBmp.width*3);
+    for(int i = imageResult.size() - 1;i>=0;i--){
+        for(int k = 0;k < imageResult[i].size();k++){
+            pixelsMax[count]  = imageResult[i][k];
+            count++;
+        }
+    }
+    unsigned r,g,b;
+    QRgb value;
+    int countColumns = 0;
+    int countRows = oBmp.height - 1;
+    if(oBmp.size == 24){
+        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+        for(int i = 0;i<oBmp.width*oBmp.height*3;i+=3){
+            r = pixelsMax[i];
+            g = pixelsMax[i+1];
+            b = pixelsMax[i+2];
+            if(r > 255){
+                r = 255;
+            }
+            if(g > 255){
+                g = 255;
+            }
+            if(b > 255){
+                b = 255;
+            }
+            value = qRgb(r,g,b);
+            pic.setPixel(countColumns,countRows,value);
+            countColumns++;
+            if(countColumns == oBmp.width){
+                countRows--;
+                countColumns=0;
+            }
+        }
+        QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+        scene->clear();
+        scene->addItem(item2);
+        graphicsView->setScene(scene);
+        graphicsView->show();
+    }
+}
+
 
 void MainWindow::paste()
 {
@@ -698,15 +1090,22 @@ void MainWindow::createActions()
     brightnessAct->setStatusTip(tr("Redo the last operation"));
     connect(brightnessAct, &QAction::triggered, this, &MainWindow::brightness);
 
-    combinationAndAct = new QAction(tr("&Add contrast to image"), this);
+    combinationAndAct = new QAction(tr("&Combination AND"), this);
     combinationAndAct->setStatusTip(tr("Cut the current selection's contents to the "
                             "clipboard"));
     connect(combinationAndAct, &QAction::triggered, this, &MainWindow::combinationAdd);
 
-    combinationOrAct = new QAction(tr("&Add contrast to image"), this);
+    combinationOrAct = new QAction(tr("&Combination OR"), this);
     combinationOrAct->setStatusTip(tr("Cut the current selection's contents to the "
                             "clipboard"));
     connect(combinationOrAct, &QAction::triggered, this, &MainWindow::combinationOr);
+
+    hor7Act = new QAction(tr("&Horizontal 7"), this);
+    hor7Act->setStatusTip(tr("Cut the current selection's contents to the "
+                            "clipboard"));
+    connect(hor7Act, &QAction::triggered, this, &MainWindow::hor7);
+
+
 
     boldAct = new QAction(tr("&Bold"), this);
     boldAct->setCheckable(true);
@@ -800,7 +1199,7 @@ void MainWindow::createMenus()
     combinationMenu->addSeparator();
 
     filtersMenu = menuBar()->addMenu(tr("&Filters"));
-    filtersMenu->addAction(constrastAct);
+    filtersMenu->addAction(hor7Act);
     filtersMenu->addAction(brightnessAct);
     filtersMenu->addSeparator();
 
