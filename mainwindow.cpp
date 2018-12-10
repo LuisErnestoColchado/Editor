@@ -996,6 +996,122 @@ void MainWindow::hor7(){
     }
 }
 
+void MainWindow::matrix3x3(){
+    std::vector<unsigned int> intRgb((oBmp.width*3)+6,0);
+    std::vector<std::vector<unsigned int>> image1(oBmp.height+2);
+    std::vector<unsigned int> value1(currentPixels.size());
+
+    std::vector<int> rowKernel1 = {1,2,1};
+    std::vector<int> rowKernel2 = {2,4,2};
+    std::vector<int> rowKernel3 = {1,2,1};
+    std::vector<std::vector<int>> kernel = {rowKernel1,rowKernel2,rowKernel3};
+
+    int j=oBmp.width*3-1;
+    int p=oBmp.width*3;
+    std::vector<std::vector<unsigned int>> imageResult(oBmp.height);
+    std::vector<unsigned int> intRgbR((oBmp.width*3),0);
+    for(int i =currentPixels.size()-1;i>=0;i--){
+        value1[j] = currentPixels[i];
+        j--;
+        if(j < (p-(oBmp.width*3))){
+            p+=oBmp.width*3;
+            j = p-1;
+
+        }
+    }
+    int count=0;
+    for(int i =0;i<oBmp.height+2;i++){
+        if(i == 0 || i == oBmp.height+1){
+            image1[i] = intRgb;
+            for(auto i : intRgb){
+                std::cout << i << " ";
+            }
+            std::cout << std::endl;
+        }
+        else{
+            for(int j=3;j<oBmp.width*3+3;j+=3){
+                intRgb[j] = value1[count];
+                intRgb[j+1] = value1[count+1];
+                intRgb[j+2] = value1[count+2];
+                count+=3;
+            }
+            image1[i] = intRgb;
+            for(auto i : intRgb){
+                std::cout << i << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << " ******* " << std::endl;
+    for(int i =1;i<image1.size()-1;i++){
+        for(int j=3;j<image1[i].size()-3;j+=3){
+            int sumR = 0;
+            int sumG = 0;
+            int sumB = 0;
+            int count = 0;
+            for(int r =0;r<3;r++){
+                for(int c =0;c<3;c++){
+                    sumR += image1[i+(r-1)][(j-3)+(c*3)] * kernel[r][c];
+                    sumG += image1[i+(r-1)][((j-3)+1)+(c*3)] * kernel[r][c];
+                    sumB += image1[i+(r-1)][((j-3)+2)+(c*3)] * kernel[r][c];
+                }
+            }
+            sumR/=9;
+            sumG/=9;
+            sumB/=9;
+            intRgbR[j-3] = sumR;
+            intRgbR[(j-3)+1] = sumG;
+            intRgbR[(j-3)+2] = sumB;
+        }
+        imageResult[i] = intRgbR;
+        for(auto i : intRgbR){
+            std::cout << i << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    count =0;
+    std::vector<unsigned int> pixelsMax(oBmp.height*oBmp.width*3);
+    for(int i = imageResult.size() - 1;i>=0;i--){
+        for(int k = 0;k < imageResult[i].size();k++){
+            pixelsMax[count]  = imageResult[i][k];
+            count++;
+        }
+    }
+    unsigned r,g,b;
+    QRgb value;
+    int countColumns = 0;
+    int countRows = oBmp.height - 1;
+    if(oBmp.size == 24){
+        QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+        for(int i = 0;i<oBmp.width*oBmp.height*3;i+=3){
+            r = pixelsMax[i];
+            g = pixelsMax[i+1];
+            b = pixelsMax[i+2];
+            if(r > 255){
+                r = 255;
+            }
+            if(g > 255){
+                g = 255;
+            }
+            if(b > 255){
+                b = 255;
+            }
+            value = qRgb(r,g,b);
+            pic.setPixel(countColumns,countRows,value);
+            countColumns++;
+            if(countColumns == oBmp.width){
+                countRows--;
+                countColumns=0;
+            }
+        }
+        QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+        scene->clear();
+        scene->addItem(item2);
+        graphicsView->setScene(scene);
+        graphicsView->show();
+    }
+}
 
 void MainWindow::paste()
 {
@@ -1105,6 +1221,10 @@ void MainWindow::createActions()
                             "clipboard"));
     connect(hor7Act, &QAction::triggered, this, &MainWindow::hor7);
 
+    matrix3x3Act = new QAction(tr("&Matrix 3x3"), this);
+    matrix3x3Act->setStatusTip(tr("Cut the current selection's contents to the "
+                            "clipboard"));
+    connect(matrix3x3Act, &QAction::triggered, this, &MainWindow::matrix3x3);
 
 
     boldAct = new QAction(tr("&Bold"), this);
@@ -1200,7 +1320,7 @@ void MainWindow::createMenus()
 
     filtersMenu = menuBar()->addMenu(tr("&Filters"));
     filtersMenu->addAction(hor7Act);
-    filtersMenu->addAction(brightnessAct);
+    filtersMenu->addAction(matrix3x3Act);
     filtersMenu->addSeparator();
 
     helpMenu = menuBar()->addMenu(tr("&Help"));

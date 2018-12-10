@@ -45,6 +45,7 @@ private slots:
     void combinationAdd();
     void combinationOr();
     void hor7();
+    void matrix3x3();
     void paste();
     void bold();
     void italic();
@@ -78,6 +79,7 @@ private:
     QAction *combinationAndAct;
     QAction *combinationOrAct;
     QAction *hor7Act;
+    QAction *matrix3x3Act;
 
     QAction *boldAct;
     QAction *italicAct;
