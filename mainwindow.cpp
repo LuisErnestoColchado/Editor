@@ -6,6 +6,8 @@
 #include <string>
 #include <math.h>
 typedef std::bitset<8> byte;
+# define PI           3.14159265358979323846  /* pi */
+
 MainWindow::MainWindow()
 {
     QLCDNumber *lcd = new QLCDNumber(3);
@@ -1060,6 +1062,183 @@ void MainWindow::transformColorToGray(){
 }
 
 void MainWindow::transformFFT(){
+    std::vector<unsigned int> value1(currentPixels.size());
+    int j=oBmp.width*3-1;
+    int p=oBmp.width*3;
+    std::vector<std::vector<unsigned int>> image1(oBmp.height);
+    std::vector<std::vector<unsigned int>> imageFFT(oBmp.height);
+    std::vector<unsigned int> intRgb((oBmp.width*3),0);
+    for(int i =currentPixels.size()-1;i>=0;i--){
+        value1[j] = currentPixels[i];
+        j--;
+        if(j < (p-(oBmp.width*3))){
+            p+=oBmp.width*3;
+            j = p-1;
+
+        }
+    }
+    int count=0;
+    for(int i =0;i<oBmp.height;i++){
+       for(int j=0;j<oBmp.width*3;j+=3){
+            intRgb[j] = value1[count];
+            intRgb[j+1] = value1[count+1];
+            intRgb[j+2] = value1[count+2];
+            count+=3;
+       }
+       image1[i] = intRgb;
+    }
+    int maxR = 0;
+    int maxG = 0;
+    int maxB = 0;
+    for(int l=0;l<oBmp.height;l++){
+       for(int k=0;k<oBmp.width*3;k+=3){
+           float sumR = 0;
+           float sumG = 0;
+           float sumB = 0;
+           float sumRi = 0;
+           float sumGi = 0;
+           float sumBi = 0;
+
+           for(int i =0;i<oBmp.height;i++){
+              for(int j=0;j<oBmp.width*3;j+=3){
+                  sumR += image1[i][j]*cos(2.0*PI*(((float)l*i/(float)oBmp.height) + ((float)k*j/(float)oBmp.width)));
+                  sumG += image1[i][j+1]*cos(2.0*PI*(((float)l*i/(float)oBmp.height) + ((float)k*j/(float)oBmp.width)));
+                  sumB += image1[i][j+2]*cos(2.0*PI*(((float)l*i/(float)oBmp.height) + ((float)k*j/(float)oBmp.width)));
+                  sumRi += image1[i][j]*sin(-2.0*PI*(((float)l*i/(float)oBmp.height) + ((float)k*j/(float)oBmp.width)));
+                  sumGi += image1[i][j+1]*sin(-2.0*PI*(((float)l*i/(float)oBmp.height) + ((float)k*j/(float)oBmp.width)));
+                  sumBi += image1[i][j+2]*sin(-2.0*PI*(((float)l*i/(float)oBmp.height) + ((float)k*j/(float)oBmp.width)));
+                  //sumR += (float)image1[i][j]*cos(((float)l*PI*(float)(2.0*i+1))/2.0*(float)oBmp.height)*cos(((float)k*PI*(float)(2.0*j+1))/2.0*(float)oBmp.width);
+                  //sumG += (float)image1[i][j+1]*cos(((float)l*PI*(float)(2.0*i+1))/2.0*(float)oBmp.height)*cos(((float)k*PI*(float)(2.0*j+1))/2.0*(float)oBmp.width);
+                  //sumB += (float)image1[i][j+2]*cos(((float)l*PI*(float)(2.0*i+1))/2.0*(float)oBmp.height)*cos(((float)k*PI*(float)(2.0*j+1))/2.0*(float)oBmp.width);
+              }
+           }
+           /*
+           if(l == 0){
+               val1 = sqrt(1.0/(float)oBmp.height);
+           }
+           else{
+               val1 = sqrt(2.0/(float)oBmp.height);
+           }
+           if(k == 0){
+               val2 = sqrt(1.0/(float)oBmp.width);
+           }
+           else{
+               val2 = sqrt(2.0/(float)oBmp.width);
+           }*/
+
+           //intRgb[k] = sqrt((float)(abs(sumR)+abs(sumRi)));
+           //intRgb[k+1] = sqrt((float)(abs(sumG)+abs(sumGi)));
+           //intRgb[k+2] = sqrt((float)(abs(sumB)+abs(sumBi)));
+           //intRgb[k] = sqrt((pow(sumR,2)+pow(sumRi,2)))/(float)(oBmp.width*oBmp.height);
+           //intRgb[k+1] = sqrt(pow(sumG,2)+pow(sumGi,2))/(float)(oBmp.width*oBmp.height);
+           //intRgb[k+2] = sqrt(pow(sumB,2)+pow(sumBi,2))/(float)(oBmp.width*oBmp.height);
+           intRgb[k] = sqrt(pow(sumR,2)+pow(sumRi,2));
+           intRgb[k+1] = sqrt(pow(sumG,2)+pow(sumGi,2));
+           intRgb[k+2] = sqrt(pow(sumB,2)+pow(sumBi,2));
+           if(maxR<intRgb[k]){
+               maxR = intRgb[k];
+           }
+           if(maxG<intRgb[k+1]){
+               maxG = intRgb[k+1];
+           }
+           if(maxB<intRgb[k+2]){
+               maxB = intRgb[k+2];
+           }
+           //std::cout << maxR << " " << maxG << " " << maxB << " - ";
+
+       }
+       //std::cout << std::endl;
+       imageFFT[l] = intRgb;
+
+    }
+    std::vector<std::vector<unsigned int>> imageResult(oBmp.height);
+    std::vector<unsigned int> intRgbr((oBmp.width*3),0);
+
+    for(int i=0;i<imageResult.size();i++){
+        imageResult[i] = intRgbr;
+    }
+    for(int l=0;l<oBmp.height;l++){
+       for(int k=0;k<oBmp.width*3;k+=3){
+           imageFFT[l][k] = log(1+imageFFT[l][k])*255.0/log(maxR+1);
+           imageFFT[l][k+1] = log(1+imageFFT[l][k+1])*255.0/log(maxG+1);
+           imageFFT[l][k+2] = log(1+imageFFT[l][k+2])*255.0/log(maxB+1);
+           //std::cout << imageFFT[l][k] << std::endl;
+           //std::cout << imageFFT[l][k+1] << std::endl;
+           //std::cout << imageFFT[l][k+2] << std::endl;
+       }
+       //std::cout << std::endl;
+    }
+    /*for(int r=0;r<oBmp.height/2;r++){
+        for(int c=0;c<oBmp.width/2;c++){
+            imageResult[r][c] = imageFFT[(oBmp.height/2)+r][(oBmp.width/2)+c];
+            imageResult[r][c+1] = imageFFT[(oBmp.height/2)+r][(oBmp.width/2)+c+1];
+            imageResult[r][c+2] = imageFFT[(oBmp.height/2)+r][(oBmp.width/2)+c+2];
+
+            imageResult[(oBmp.height/2)+r][(oBmp.width/2)+c] = imageFFT[r][c];
+            imageResult[(oBmp.height/2)+r][(oBmp.width/2)+c+1] = imageFFT[r][c+1];
+            imageResult[(oBmp.height/2)+r][(oBmp.width/2)+c+2] = imageFFT[r][c+2];
+        }
+    }
+
+    for(int r=oBmp.height/2;r<oBmp.height/2;r++){
+        for(int c=0;c<oBmp.width/2;c++){
+            imageResult[r][c] = imageFFT[r-oBmp.height/2][(oBmp.width/2)+c];
+            imageResult[r][c+1] = imageFFT[r-oBmp.height/2][(oBmp.width/2)+c+1];
+            imageResult[r][c+2] = imageFFT[r-oBmp.height/2][(oBmp.width/2)+c+2];
+
+            imageResult[r-oBmp.height/2][(oBmp.width/2)+c] = imageFFT[r][c];
+            imageResult[r-oBmp.height/2][(oBmp.width/2)+c+1] = imageFFT[r][c+1];
+            imageResult[r-oBmp.height/2][(oBmp.width/2)+c+2] = imageFFT[r][c+2];
+        }
+    }
+
+    for(int i=0;i<imageResult.size();i++){
+        for(int j =0;j<imageResult[i].size();j++){
+            std::cout << imageResult[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }*/
+
+    count =0;
+    std::vector<unsigned int> pixelsMax(oBmp.height*oBmp.width*3);
+    for(int i = imageFFT.size() - 1;i>=0;i--){
+        for(int k = 0;k < imageFFT[i].size();k++){
+            pixelsMax[count]  = imageFFT[i][k];
+            count++;
+        }
+    }
+    unsigned r,g,b;
+    QRgb value;
+    int countColumns = 0;
+    int countRows = oBmp.height - 1;
+
+    QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+    for(int i = 0;i<oBmp.width*oBmp.height*3;i+=3){
+        r = pixelsMax[i];
+        g = pixelsMax[i+1];
+        b = pixelsMax[i+2];
+        if(r > 255){
+            r = 255;
+        }
+        if(g > 255){
+            g = 255;
+        }
+        if(b > 255){
+            b = 255;
+        }
+        value = qRgb(r,g,b);
+        pic.setPixel(countColumns,countRows,value);
+        countColumns++;
+        if(countColumns == oBmp.width){
+            countRows--;
+            countColumns=0;
+        }
+    }
+    QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+    scene->clear();
+    scene->addItem(item2);
+    graphicsView->setScene(scene);
+    graphicsView->show();
 
 }
 void MainWindow::paste()
