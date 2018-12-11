@@ -46,6 +46,9 @@ private slots:
     void combinationOr();
     void hor7();
     void matrix3x3();
+    void transformColorToGray();
+    void transformFFT();
+
     void paste();
     void bold();
     void italic();
@@ -66,8 +69,10 @@ private:
     QMenu *cbMenu;
     QMenu *filtersMenu;
     QMenu *combinationMenu;
+    QMenu *transformMenu;
     QMenu *formatMenu;
     QMenu *helpMenu;
+
     QActionGroup *alignmentGroup;
     QAction *newAct;
     QAction *openAct;
@@ -80,6 +85,8 @@ private:
     QAction *combinationOrAct;
     QAction *hor7Act;
     QAction *matrix3x3Act;
+    QAction *transformColorToGrayAct;
+    QAction *transformFFTAct;
 
     QAction *boldAct;
     QAction *italicAct;
