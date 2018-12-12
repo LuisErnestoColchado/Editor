@@ -47,6 +47,7 @@ private slots:
     void hor7();
     void matrix3x3();
     void transformColorToGray();
+    void transformRgbToCmy();
     void transformFFT();
 
     void paste();
@@ -86,7 +87,9 @@ private:
     QAction *hor7Act;
     QAction *matrix3x3Act;
     QAction *transformColorToGrayAct;
+    QAction *transformRgbToCmyAct;
     QAction *transformFFTAct;
+
 
     QAction *boldAct;
     QAction *italicAct;

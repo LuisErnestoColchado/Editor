@@ -1241,6 +1241,87 @@ void MainWindow::transformFFT(){
     graphicsView->show();
 
 }
+
+void MainWindow::transformRgbToCmy(){
+    std::cout << " dddd " << std::endl;
+    //std::vector<float> cmyfloat(currentPixels.size());
+    std::vector<float> cmy(currentPixels.size()*2);
+    float min = 0;
+    float c,m,y;
+    int r,g,b;
+    int count = 0;
+    for(int i=0;i<currentPixels.size();i+=3){
+        float cv = 1.0f - (currentPixels[i]/250.0f);
+        float mv = 1.0f - (currentPixels[i+1]/250.0f);
+        float yv = 1.0f - (currentPixels[i+2]/250.0f);
+
+        /*if(cv < minc){
+            minc = c;
+        }
+        if(mv < minm){
+            minc = m;
+        }
+        if(yv < miny){
+            miny = y;
+        }*/
+        float Min = std::min(1-currentPixels[i],1-currentPixels[i+1]);
+        if(Min > 1-currentPixels[i+2]){
+            Min = 1-currentPixels[i+2];
+        }
+        //float cv = (1.0f - (float)currentPixels[i] - Min) / (1.0-Min);
+        //float mv = (1.0f - (float)currentPixels[i+1] - Min) / (1.0-Min);
+        //float yv = (1.0f - (float)currentPixels[i+2] - Min) / (1.0-Min);
+        //std::cout << " yv " << yv << endl;
+        cv= abs(((cv-Min)/(1.0-Min)));
+        mv = abs(((mv-Min)/(1.0-Min)));
+        yv = abs(((yv-Min)/(1.0-Min)));
+
+        std::cout << " cv " << cv <<" yv " << yv << " - "  << Min << std::endl;
+        cmy[count] = cv;
+        cmy[count+1] = mv;
+        cmy[count+2] = yv;
+        cmy[count+3] = Min;
+        count+=4;
+//        std:: cout << c << " " << m << " " << y << " ";
+    }
+    //std::cout << std::endl;
+    /*for(int j =0;j<currentPixels.size();j++){
+
+        cmy[j] = (unsigned int)cmyfloat[j];
+        cmy[j+1] = (unsigned int)cmyfloat[j+1];
+        cmy[j+2] = (unsigned int)cmyfloat[j+2];
+    }*/
+
+    QColor value;
+    QRgb rgb;
+    int countColumns = 0;
+    int countRows = oBmp.height - 1;
+
+    QImage pic = QImage(oBmp.width, oBmp.height, QImage::Format_RGBA8888);
+    for(int i = 0;i<oBmp.width*oBmp.height*4;i+=4){
+        c = cmy[i];
+        m = cmy[i+1];
+        y = cmy[i+2];
+
+        //std::cout << c << " " << m << " " << y << std::endl;
+        value.setCmykF(c,m,y,cmy[i+3]);
+        value.getRgb(&r,&g,&b);
+
+        rgb = qRgb(r,g,b);
+        pic.setPixel(countColumns,countRows,rgb);
+        countColumns++;
+        if(countColumns == oBmp.width){
+            countRows--;
+            countColumns=0;
+        }
+    }
+    QGraphicsPixmapItem* item2 = new QGraphicsPixmapItem(QPixmap::fromImage(pic));
+    scene->clear();
+    scene->addItem(item2);
+    graphicsView->setScene(scene);
+    graphicsView->show();
+}
+
 void MainWindow::paste()
 {
     infoLabel->setText(tr("Invoked <b>Edit|Paste</b>"));
@@ -1359,6 +1440,11 @@ void MainWindow::createActions()
                             "clipboard"));
     connect(transformColorToGrayAct, &QAction::triggered, this, &MainWindow::transformColorToGray);
 
+    transformRgbToCmyAct = new QAction(tr("&Transform RGB to CMY"), this);
+    transformRgbToCmyAct->setStatusTip(tr("Cut the current selection's contents to the "
+                            "clipboard"));
+    connect(transformRgbToCmyAct, &QAction::triggered, this, &MainWindow::transformRgbToCmy);
+
     transformFFTAct = new QAction(tr("&Faster Fourier Transform"), this);
     transformFFTAct->setStatusTip(tr("Cut the current selection's contents to the "
                             "clipboard"));
@@ -1462,6 +1548,7 @@ void MainWindow::createMenus()
 
     transformMenu = menuBar()->addMenu(tr("&Transformations"));
     transformMenu->addAction(transformColorToGrayAct);
+    transformMenu->addAction(transformRgbToCmyAct);
     transformMenu->addAction(transformFFTAct);
     transformMenu->addSeparator();
 
